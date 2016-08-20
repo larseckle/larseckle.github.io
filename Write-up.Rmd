@@ -1,0 +1,127 @@
+---
+title: "Machine Learning - Project Week 4"
+author: "Lars C. F. Eckle"
+date: "Aug 14, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset), which has been generously provided for this study.
+
+# Data Loading and Preparation of Analysis
+
+## Data Loading
+The training and test data is available as CVS and will be loaded as follows:
+
+```{r  cache =TRUE}
+
+# store locally
+if(!file.exists("./data")){dir.create("./data")}
+
+trainingfileUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testfileUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(trainingfileUrl,destfile="./data/pml-training.csv",method="curl")
+download.file(testfileUrl,destfile="./data/pml-testing.csv",method="curl")
+
+# read training data
+training <- read.csv("./data/pml-training.csv", na.strings=c("NA","#DIV/0!", "") )
+testing <- read.csv("./data/pml-testing.csv", na.strings=c("NA","#DIV/0!", "") )
+
+```
+
+## Feature Selection
+
+Remove Values that cannot contribute to model development due to low vriability and NAs.
+```{r }
+library(caret)
+# exclude near zero variance features
+dim(training)
+zeroVariab <- nearZeroVar(training)
+training <- training[, -zeroVariab]
+dim(training)
+NAs <- apply(training,2,function(x) {sum(is.na(x))})
+training <- training[,which(NAs == 0)]
+dim(training)
+```
+
+Some of the data provided should not be used for the model to avoid overfitting, e.g user name, time stamps and serial numbers:
+```{r }
+removeOverfitting <- c("user_name","raw_timestamp_part_1","raw_timestamp_part_2" ,"cvtd_timestamp", "X") 
+training <- training[ , !(names(training) %in% removeOverfitting)]
+dim(training)
+```
+
+Since the data set for testing does not include any classification, it is necessary to split the training data into a sub-training data set and validation data set.
+
+```{r}
+dim(training)
+
+inSubTrain = createDataPartition(training$classe, p = 3/4, list=FALSE)
+subtraining = training[ inSubTrain,]
+validation = training[-inSubTrain,]
+
+dim(subtraining)
+dim(validation)
+
+table(subtraining$classe)
+table(validation$classe)
+```
+It appears that the subtraining data and the validation data sets contain roughly uniform distribution of outcomes "classe".
+Hence there is no need for e.g. bootstrapping certain test cases in order to build a meaningful model.
+
+# Building a Prediction Model
+
+## Using Linear Discriminant Analysis and Cross Validation
+
+```{r}
+library(rpart) 
+library(caret)
+library(gbm)
+
+fit2 <- train(classe ~ ., data=subtraining, method="lda")
+pred2 <- predict(fit2, validation)
+confusionMatrix(pred2, validation$classe)
+head(pred2,100)
+```
+
+The accuracy in the test validation provides an accuracy of 0.7351, which appears quite OK.
+
+# Prediction
+
+The prediction of the model on the data without "classe"value is as follows:
+
+```{r}
+
+pred3 <- predict(fit2, testing)
+pred3
+```
+
+# Course Project Prediction Quiz Portion
+
+Apply your machine learning algorithm to the 20 test cases available in the test data above and submit your predictions in appropriate format to the Course Project Prediction Quiz for automated grading.
+
+```{r}
+
+pml_write_files = function(x) {
+    n = length(x)
+    for (i in 1:n) {
+        filename = paste0("problem_id_", i, ".txt")
+        write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, 
+            col.names = FALSE)
+    }
+}
+
+pml_write_files(pred3)
+```
+
+# References
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz4HKATw1KT
+
