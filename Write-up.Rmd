@@ -60,8 +60,6 @@ dim(training)
 Since the data set for testing does not include any classification, it is necessary to split the training data into a sub-training data set and validation data set.
 
 ```{r}
-dim(training)
-
 inSubTrain = createDataPartition(training$classe, p = 3/4, list=FALSE)
 subtraining = training[ inSubTrain,]
 validation = training[-inSubTrain,]
@@ -84,17 +82,42 @@ library(rpart)
 library(caret)
 library(gbm)
 
-fit2 <- train(classe ~ ., data=subtraining, method="lda")
-pred2 <- predict(fit2, validation)
-confusionMatrix(pred2, validation$classe)
-head(pred2,100)
+set.seed(734723)
+
+fit1 <- train(classe ~ ., data=subtraining, method="lda")
+fit1
 ```
 
-The accuracy in the test validation provides an accuracy of 0.7351, which appears quite OK.
+The expected accuracy of the model is reported as 70.9%, which appears kind of weak.
+
+```{r cache =TRUE}
+pred1 <- predict(fit1, validation)
+confusionMatrix(pred1, validation$classe)
+head(pred1,10)
+```
+
+Prediction on out of sample data is consistent with initial expectation of 71%.  It is a valid model, but without really strong predictive power.
+
+## Using Random Forest and Cross Validation
+
+```{r cache =TRUE}
+fit2 <-train(classe ~.,method="rf", data=subtraining, trControl = trainControl(method="cv"),number=3)
+fit2
+
+pred2 <- predict(fit2, validation)
+confusionMatrix(pred2, validation$classe)
+head(pred1,10)
+```
+
+The accuracy in the out of sampple data on random forest is 99.8% and quite strong.
+
+## Model Selection
+
+The model based on the random forest has much higher expected and actualy predictive power on out of sample data, so that the random forest is the model of choice here.
 
 # Prediction
 
-The prediction of the model on the data without "classe"value is as follows:
+The prediction of the model on the data without "classe" value is as follows using the random forest based model:
 
 ```{r}
 
@@ -102,26 +125,7 @@ pred3 <- predict(fit2, testing)
 pred3
 ```
 
-# Course Project Prediction Quiz Portion
-
-Apply your machine learning algorithm to the 20 test cases available in the test data above and submit your predictions in appropriate format to the Course Project Prediction Quiz for automated grading.
-
-```{r}
-
-pml_write_files = function(x) {
-    n = length(x)
-    for (i in 1:n) {
-        filename = paste0("problem_id_", i, ".txt")
-        write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, 
-            col.names = FALSE)
-    }
-}
-
-pml_write_files(pred3)
-```
-
 # References
 
 Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
 Read more: http://groupware.les.inf.puc-rio.br/har#ixzz4HKATw1KT
-

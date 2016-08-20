@@ -166,8 +166,6 @@ training &lt;- training[ , !(names(training) %in% removeOverfitting)]
 dim(training)</code></pre>
 <pre><code>## [1] 19622    54</code></pre>
 <p>Since the data set for testing does not include any classification, it is necessary to split the training data into a sub-training data set and validation data set.</p>
-<pre class="r"><code>dim(training)</code></pre>
-<pre><code>## [1] 19622    54</code></pre>
 <pre class="r"><code>inSubTrain = createDataPartition(training$classe, p = 3/4, list=FALSE)
 subtraining = training[ inSubTrain,]
 validation = training[-inSubTrain,]
@@ -203,70 +201,153 @@ library(gbm)</code></pre>
 <pre><code>## Loading required package: splines</code></pre>
 <pre><code>## Loading required package: parallel</code></pre>
 <pre><code>## Loaded gbm 2.1.1</code></pre>
-<pre class="r"><code>fit2 &lt;- train(classe ~ ., data=subtraining, method=&quot;lda&quot;)</code></pre>
+<pre class="r"><code>set.seed(734723)
+
+fit1 &lt;- train(classe ~ ., data=subtraining, method=&quot;lda&quot;)</code></pre>
 <pre><code>## Loading required package: MASS</code></pre>
+<pre class="r"><code>fit1</code></pre>
+<pre><code>## Linear Discriminant Analysis 
+## 
+## 14718 samples
+##    53 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Bootstrapped (25 reps) 
+## Summary of sample sizes: 14718, 14718, 14718, 14718, 14718, 14718, ... 
+## Resampling results:
+## 
+##   Accuracy   Kappa    
+##   0.7095913  0.6325543
+## 
+## </code></pre>
+<p>The expected accuracy of the model is reported as 70.9%, which appears kind of weak.</p>
+<pre class="r"><code>pred1 &lt;- predict(fit1, validation)
+confusionMatrix(pred1, validation$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1165  158   98   38   41
+##          B   44  593   87   39  125
+##          C   88  119  542   88   79
+##          D   93   43  105  606   81
+##          E    5   36   23   33  575
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.7098          
+##                  95% CI : (0.6969, 0.7225)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.6323          
+##  Mcnemar's Test P-Value : &lt; 2.2e-16       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.8351   0.6249   0.6339   0.7537   0.6382
+## Specificity            0.9045   0.9254   0.9076   0.9215   0.9758
+## Pos Pred Value         0.7767   0.6678   0.5917   0.6530   0.8557
+## Neg Pred Value         0.9324   0.9114   0.9215   0.9502   0.9230
+## Prevalence             0.2845   0.1935   0.1743   0.1639   0.1837
+## Detection Rate         0.2376   0.1209   0.1105   0.1236   0.1173
+## Detection Prevalence   0.3059   0.1811   0.1868   0.1892   0.1370
+## Balanced Accuracy      0.8698   0.7751   0.7708   0.8376   0.8070</code></pre>
+<pre class="r"><code>head(pred1,10)</code></pre>
+<pre><code>##  [1] A A A A A A A A A A
+## Levels: A B C D E</code></pre>
+<p>Prediction on out of sample data is consistent with initial expectation of 71%. It is a valid model, but without really strong predictive power.</p>
+</div>
+<div id="using-random-forest-and-cross-validation" class="section level2">
+<h2>Using Random Forest and Cross Validation</h2>
+<pre class="r"><code>fit2 &lt;-train(classe ~.,method=&quot;rf&quot;, data=subtraining, trControl = trainControl(method=&quot;cv&quot;),number=3)</code></pre>
+<pre><code>## Loading required package: randomForest</code></pre>
+<pre><code>## randomForest 4.6-12</code></pre>
+<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre><code>## 
+## Attaching package: 'randomForest'</code></pre>
+<pre><code>## The following object is masked from 'package:ggplot2':
+## 
+##     margin</code></pre>
+<pre class="r"><code>fit2</code></pre>
+<pre><code>## Random Forest 
+## 
+## 14718 samples
+##    53 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (10 fold) 
+## Summary of sample sizes: 13245, 13245, 13247, 13246, 13247, 13246, ... 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9955163  0.9943283
+##   27    0.9975540  0.9969061
+##   53    0.9944957  0.9930374
+## 
+## Accuracy was used to select the optimal model using  the largest value.
+## The final value used for the model was mtry = 27.</code></pre>
 <pre class="r"><code>pred2 &lt;- predict(fit2, validation)
 confusionMatrix(pred2, validation$classe)</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 1112  120   92   45   49
-##          B   58  637   84   40  130
-##          C  111  121  546   94   87
-##          D  109   35  119  589   85
-##          E    5   36   14   36  550
+##          A 1395    3    0    0    0
+##          B    0  944    1    0    0
+##          C    0    2  854    2    0
+##          D    0    0    0  801    1
+##          E    0    0    0    1  900
 ## 
 ## Overall Statistics
 ##                                          
-##                Accuracy : 0.7002         
-##                  95% CI : (0.6872, 0.713)
+##                Accuracy : 0.998          
+##                  95% CI : (0.9963, 0.999)
 ##     No Information Rate : 0.2845         
 ##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
 ##                                          
-##                   Kappa : 0.621          
-##  Mcnemar's Test P-Value : &lt; 2.2e-16      
+##                   Kappa : 0.9974         
+##  Mcnemar's Test P-Value : NA             
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.7971   0.6712   0.6386   0.7326   0.6104
-## Specificity            0.9128   0.9211   0.8980   0.9151   0.9773
-## Pos Pred Value         0.7842   0.6712   0.5693   0.6286   0.8580
-## Neg Pred Value         0.9188   0.9211   0.9217   0.9458   0.9177
+## Sensitivity            1.0000   0.9947   0.9988   0.9963   0.9989
+## Specificity            0.9991   0.9997   0.9990   0.9998   0.9998
+## Pos Pred Value         0.9979   0.9989   0.9953   0.9988   0.9989
+## Neg Pred Value         1.0000   0.9987   0.9998   0.9993   0.9998
 ## Prevalence             0.2845   0.1935   0.1743   0.1639   0.1837
-## Detection Rate         0.2268   0.1299   0.1113   0.1201   0.1122
-## Detection Prevalence   0.2892   0.1935   0.1956   0.1911   0.1307
-## Balanced Accuracy      0.8550   0.7962   0.7683   0.8239   0.7938</code></pre>
-<pre class="r"><code>head(pred2,100)</code></pre>
-<pre><code>##   [1] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [36] A A A A A A A A A A A C C C C C C C C C C C C C C C C C A C A A A A A
-##  [71] C C A A A A C C C C C C E D A D D A A A A A A A D D C C C D
+## Detection Rate         0.2845   0.1925   0.1741   0.1633   0.1835
+## Detection Prevalence   0.2851   0.1927   0.1750   0.1635   0.1837
+## Balanced Accuracy      0.9996   0.9972   0.9989   0.9980   0.9993</code></pre>
+<pre class="r"><code>head(pred1,10)</code></pre>
+<pre><code>##  [1] A A A A A A A A A A
 ## Levels: A B C D E</code></pre>
-<p>The accuracy in the test validation provides an accuracy of 0.7351, which appears quite OK.</p>
+<p>The accuracy in the out of sampple data on random forest is 99.8% and quite strong.</p>
+</div>
+<div id="model-selection" class="section level2">
+<h2>Model Selection</h2>
+<p>The model based on the random forest has much higher expected and actualy predictive power on out of sample data, so that the random forest is the model of choice here.</p>
 </div>
 </div>
 <div id="prediction" class="section level1">
 <h1>Prediction</h1>
-<p>The prediction of the model on the data without “classe”value is as follows:</p>
-<pre class="r"><code>pred3 &lt;- predict(fit2, testing)
-pred3</code></pre>
-<pre><code>##  [1] B A B A A E D D A A D A B A B A A B B B
+<p>The prediction of the model on the data without “classe” value is as follows using the random forest based model:</p>
+<pre class="r"><code>pred3 &lt;- predict(fit2, testing)</code></pre>
+<pre><code>## Loading required package: randomForest</code></pre>
+<pre><code>## randomForest 4.6-12</code></pre>
+<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre><code>## 
+## Attaching package: 'randomForest'</code></pre>
+<pre><code>## The following object is masked from 'package:ggplot2':
+## 
+##     margin</code></pre>
+<pre class="r"><code>pred3</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
 ## Levels: A B C D E</code></pre>
-</div>
-<div id="course-project-prediction-quiz-portion" class="section level1">
-<h1>Course Project Prediction Quiz Portion</h1>
-<p>Apply your machine learning algorithm to the 20 test cases available in the test data above and submit your predictions in appropriate format to the Course Project Prediction Quiz for automated grading.</p>
-<pre class="r"><code>pml_write_files = function(x) {
-    n = length(x)
-    for (i in 1:n) {
-        filename = paste0(&quot;problem_id_&quot;, i, &quot;.txt&quot;)
-        write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, 
-            col.names = FALSE)
-    }
-}
-
-pml_write_files(pred3)</code></pre>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
